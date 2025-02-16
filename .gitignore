@@ -4,6 +4,10 @@ __pycache__/
 *$py.class
 venv/
 env/
+banners/
+images/
+processed_images/
+uploads/
 
 # Archivos procesados
 processed_images/
