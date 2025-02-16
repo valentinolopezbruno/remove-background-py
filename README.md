@@ -1,8 +1,44 @@
-# AI Image Background Processor
+# 🖼️ AI Image Background Processor
 
-![App Example](./example.png)
+Una aplicación web que permite remover el fondo de tus imágenes y reemplazarlo con un fondo de galaxia usando inteligencia artificial.
 
-A Streamlit application that removes backgrounds from images and adds a galaxy background. The app can process single images or entire folders of images.
+## ✨ Características
+
+- Procesa hasta 10 imágenes simultáneamente
+- Remueve fondos automáticamente usando IA
+- Agrega fondo de galaxia
+- Descarga individual o en lote
+- Interfaz amigable y responsiva
+
+## 🚀 Uso
+
+1. Abre la aplicación en tu navegador
+2. Arrastra o selecciona hasta 10 imágenes
+3. Espera el procesamiento
+4. Descarga las imágenes procesadas
+
+## 💻 Desarrollo Local
+
+1. Clona el repositorio
+2. Instala las dependencias:
+```bash
+pip install streamlit pillow rembg
+```
+3. Crea las carpetas necesarias:
+```bash
+mkdir -p uploads banners
+```
+4. Coloca tu imagen de fondo en `banners/banner-galaxia.jpeg`
+5. Ejecuta la aplicación:
+```bash
+streamlit run app.py
+```
+
+## 📝 Limitaciones
+
+- Máximo 10 imágenes por proceso
+- Formatos soportados: JPG, JPEG, PNG
+- Tamaño máximo por imagen: 5MB
 
 ## Supported Image Formats
 

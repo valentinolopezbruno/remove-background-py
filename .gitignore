@@ -1,13 +1,26 @@
-# Entorno virtual
-venv/
-env/
-.env/
-.venv/
-
-# Archivos de Python
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
+venv/
+env/
+
+# Archivos procesados
+processed_images/
+uploads/
+*.zip
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Archivos de Python
+.env/
+.venv/
 *.so
 .Python
 build/
@@ -26,18 +39,11 @@ wheels/
 .installed.cfg
 *.egg
 
-# Carpeta de uploads (si no quieres subir las imágenes)
-uploads/
-
 # Archivos del sistema
-.DS_Store
-.env
 .env.local
 .env.*.local
 
 # IDEs y editores
-.idea/
-.vscode/
 *.swp
 *.swo
 *~ 
