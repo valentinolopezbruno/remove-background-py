@@ -1,0 +1,44 @@
+# Entorno virtual
+venv/
+env/
+.env/
+.venv/
+
+# Archivos de Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+uploads/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Carpeta de uploads (si no quieres subir las imágenes)
+uploads/
+
+# Archivos del sistema
+.DS_Store
+.env
+.env.local
+.env.*.local
+
+# IDEs y editores
+.idea/
+.vscode/
+*.swp
+*.swo
+*~ 
