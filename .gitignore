@@ -1,8 +1,5 @@
 # Entorno virtual
 venv/
-images/
-uploads/
-processed_images/
 env/
 .env/
 .venv/
@@ -22,7 +19,6 @@ eggs/
 lib/
 lib64/
 parts/
-uploads/
 sdist/
 var/
 wheels/

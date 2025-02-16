@@ -14,23 +14,18 @@ def save_uploaded_file(uploaded_file):
     return file_path
 
 def overlay_images(foreground_path, background_path="./banners/banner-galaxia.jpeg"):
-    # Abrir las imágenes
     foreground = Image.open(foreground_path)
     background = Image.open(background_path)
     
-    # Redimensionar el fondo al tamaño del primer plano si es necesario
     background = background.resize(foreground.size)
     
-    # Asegurar que las imágenes están en modo RGBA
     if foreground.mode != 'RGBA':
         foreground = foreground.convert('RGBA')
     if background.mode != 'RGBA':
         background = background.convert('RGBA')
     
-    # Combinar las imágenes
     combined = Image.alpha_composite(background, foreground)
     
-    # Guardar la imagen combinada
     output_path = foreground_path.replace('_rmbg.', '_combined.')
     combined.save(output_path, "PNG")
     return output_path
@@ -40,15 +35,12 @@ def remove_background(input_path):
     output_path = input_image.replace('.', '_rmbg.')
     
     try:
-        # Abrir la imagen y remover el fondo
         img = Image.open(input_image)
         output = remove(img)
         output.save(output_path, "PNG")
         
-        # Combinar con el fondo de galaxia
         combined_path = overlay_images(output_path)
         
-        # Mostrar las imágenes
         col1, col2, col3 = st.columns(3)
         with col1:
             st.header("Original")
@@ -73,50 +65,38 @@ def remove_background(input_path):
         st.error(f"Ocurrió un error: {e}")
 
 def process_folder(input_folder, output_folder="processed_images"):
-    # Crear carpeta de salida si no existe
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
     
-    # Obtener lista de imágenes en la carpeta
     valid_extensions = {'.jpg', '.jpeg', '.png'}
     image_files = [f for f in os.listdir(input_folder) 
                    if Path(f).suffix.lower() in valid_extensions]
     
-    # Crear contenedor para la barra de progreso
     progress_container = st.empty()
     
-    # Mostrar número total de imágenes
     st.write(f"Encontradas {len(image_files)} imágenes para procesar")
     
-    # Procesar cada imagen
     for i, filename in enumerate(image_files):
-        # Actualizar barra de progreso
         progress = (i + 1) / len(image_files)
         progress_container.progress(progress)
         
         try:
-            # Rutas de entrada y salida
             input_path = os.path.join(input_folder, filename)
             base_name = Path(filename).stem
             final_path = os.path.join(output_folder, f"{base_name}_final.png")
             
-            # Cargar y procesar imagen
             img = Image.open(input_path)
             
-            # Remover fondo y mantener en memoria (sin guardar)
             output_no_bg = remove(img)
             
-            # Preparar el fondo
             background = Image.open("./banners/banner-galaxia.jpeg")
             background = background.resize(output_no_bg.size)
             
-            # Asegurar modo RGBA
             if output_no_bg.mode != 'RGBA':
                 output_no_bg = output_no_bg.convert('RGBA')
             if background.mode != 'RGBA':
                 background = background.convert('RGBA')
             
-            # Combinar y guardar directamente la imagen final
             combined = Image.alpha_composite(background, output_no_bg)
             combined.save(final_path, "PNG")
             
@@ -131,7 +111,6 @@ def process_folder(input_folder, output_folder="processed_images"):
 def main():
     st.title("Procesador de Imágenes con IA")
     
-    # Crear tabs para diferentes modos
     tab1, tab2 = st.tabs(["Procesar Imagen Individual", "Procesar Carpeta"])
     
     with tab1:
