@@ -1,5 +1,8 @@
 # Entorno virtual
 venv/
+images/
+uploads/
+processed_images/
 env/
 .env/
 .venv/

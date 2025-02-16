@@ -2,6 +2,7 @@ import os
 from PIL import Image
 import streamlit as st
 from rembg import remove
+from pathlib import Path
 
 def save_uploaded_file(uploaded_file):
     upload_dir = "uploads"
@@ -71,11 +72,83 @@ def remove_background(input_path):
     except Exception as e:
         st.error(f"Ocurrió un error: {e}")
 
+def process_folder(input_folder, output_folder="processed_images"):
+    # Crear carpeta de salida si no existe
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+    
+    # Obtener lista de imágenes en la carpeta
+    valid_extensions = {'.jpg', '.jpeg', '.png'}
+    image_files = [f for f in os.listdir(input_folder) 
+                   if Path(f).suffix.lower() in valid_extensions]
+    
+    # Crear contenedor para la barra de progreso
+    progress_container = st.empty()
+    
+    # Mostrar número total de imágenes
+    st.write(f"Encontradas {len(image_files)} imágenes para procesar")
+    
+    # Procesar cada imagen
+    for i, filename in enumerate(image_files):
+        # Actualizar barra de progreso
+        progress = (i + 1) / len(image_files)
+        progress_container.progress(progress)
+        
+        try:
+            # Rutas de entrada y salida
+            input_path = os.path.join(input_folder, filename)
+            base_name = Path(filename).stem
+            final_path = os.path.join(output_folder, f"{base_name}_final.png")
+            
+            # Cargar y procesar imagen
+            img = Image.open(input_path)
+            
+            # Remover fondo y mantener en memoria (sin guardar)
+            output_no_bg = remove(img)
+            
+            # Preparar el fondo
+            background = Image.open("./banners/banner-galaxia.jpeg")
+            background = background.resize(output_no_bg.size)
+            
+            # Asegurar modo RGBA
+            if output_no_bg.mode != 'RGBA':
+                output_no_bg = output_no_bg.convert('RGBA')
+            if background.mode != 'RGBA':
+                background = background.convert('RGBA')
+            
+            # Combinar y guardar directamente la imagen final
+            combined = Image.alpha_composite(background, output_no_bg)
+            combined.save(final_path, "PNG")
+            
+            st.write(f"✅ Procesada: {filename}")
+            
+        except Exception as e:
+            st.write(f"❌ Error procesando {filename}: {str(e)}")
+    
+    progress_container.empty()
+    st.success("¡Procesamiento por lotes completado!")
+
 def main():
-    st.title("Background Removal App")
-    uploaded_file = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
-    if uploaded_file is not None:
-        remove_background(uploaded_file)
+    st.title("Procesador de Imágenes con IA")
+    
+    # Crear tabs para diferentes modos
+    tab1, tab2 = st.tabs(["Procesar Imagen Individual", "Procesar Carpeta"])
+    
+    with tab1:
+        st.header("Subir Imagen Individual")
+        uploaded_file = st.file_uploader("Subir una imagen", type=["jpg", "jpeg", "png"])
+        if uploaded_file is not None:
+            remove_background(uploaded_file)
+    
+    with tab2:
+        st.header("Procesar Carpeta Completa")
+        input_folder = st.text_input("Ruta de la carpeta con imágenes:", "./images")
+        
+        if st.button("Procesar Carpeta"):
+            if os.path.exists(input_folder):
+                process_folder(input_folder)
+            else:
+                st.error(f"La carpeta {input_folder} no existe")
 
 if __name__ == "__main__":
     main()
