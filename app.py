@@ -3,6 +3,8 @@ from PIL import Image
 import streamlit as st
 from rembg import remove
 from pathlib import Path
+import zipfile
+import io
 
 def save_uploaded_file(uploaded_file):
     upload_dir = "uploads"
@@ -30,104 +32,103 @@ def overlay_images(foreground_path, background_path="./banners/banner-galaxia.jp
     combined.save(output_path, "PNG")
     return output_path
 
-def remove_background(input_path):
-    input_image = save_uploaded_file(input_path)
-    output_path = input_image.replace('.', '_rmbg.')
-    
-    try:
-        img = Image.open(input_image)
-        output = remove(img)
-        output.save(output_path, "PNG")
-        
-        combined_path = overlay_images(output_path)
-        
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.header("Original")
-            st.image(input_image, caption="Original Img")
-            with open(input_image, "rb") as img_file:
-                st.download_button(label="Download Original", data=img_file, file_name="original_image.png", mime="image/png")
-        
-        with col2:
-            st.header("Sin Fondo")
-            st.image(output_path, caption="Sin Fondo")
-            with open(output_path, "rb") as img_file:
-                st.download_button(label="Download Sin Fondo", data=img_file, file_name="no_background.png", mime="image/png")
-        
-        with col3:
-            st.header("Con Galaxia")
-            st.image(combined_path, caption="Con Fondo de Galaxia")
-            with open(combined_path, "rb") as img_file:
-                st.download_button(label="Download Final", data=img_file, file_name="with_galaxy.png", mime="image/png")
-        
-        st.success("¡Imágenes procesadas exitosamente!")
-    except Exception as e:
-        st.error(f"Ocurrió un error: {e}")
+def create_zip_of_images(image_paths, zip_name="processed_images.zip"):
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w") as zip_file:
+        for path in image_paths:
+            zip_file.write(path, os.path.basename(path))
+    return zip_buffer
 
-def process_folder(input_folder, output_folder="processed_images"):
-    if not os.path.exists(output_folder):
-        os.makedirs(output_folder)
+def process_images(uploaded_files):
+    processed_paths = []
     
-    valid_extensions = {'.jpg', '.jpeg', '.png'}
-    image_files = [f for f in os.listdir(input_folder) 
-                   if Path(f).suffix.lower() in valid_extensions]
-    
-    progress_container = st.empty()
-    
-    st.write(f"Encontradas {len(image_files)} imágenes para procesar")
-    
-    for i, filename in enumerate(image_files):
-        progress = (i + 1) / len(image_files)
-        progress_container.progress(progress)
-        
+    for uploaded_file in uploaded_files:
         try:
-            input_path = os.path.join(input_folder, filename)
-            base_name = Path(filename).stem
-            final_path = os.path.join(output_folder, f"{base_name}_final.png")
+            # Guardar y procesar imagen
+            input_image = save_uploaded_file(uploaded_file)
+            output_path = input_image.replace('.', '_rmbg.')
             
-            img = Image.open(input_path)
+            # Remover fondo
+            img = Image.open(input_image)
+            output = remove(img)
+            output.save(output_path, "PNG")
             
-            output_no_bg = remove(img)
-            
-            background = Image.open("./banners/banner-galaxia.jpeg")
-            background = background.resize(output_no_bg.size)
-            
-            if output_no_bg.mode != 'RGBA':
-                output_no_bg = output_no_bg.convert('RGBA')
-            if background.mode != 'RGBA':
-                background = background.convert('RGBA')
-            
-            combined = Image.alpha_composite(background, output_no_bg)
-            combined.save(final_path, "PNG")
-            
-            st.write(f"✅ Procesada: {filename}")
+            # Agregar fondo de galaxia
+            final_path = overlay_images(output_path)
+            processed_paths.append(final_path)
             
         except Exception as e:
-            st.write(f"❌ Error procesando {filename}: {str(e)}")
+            st.error(f"Error procesando {uploaded_file.name}: {str(e)}")
+            continue
     
-    progress_container.empty()
-    st.success("¡Procesamiento por lotes completado!")
+    return processed_paths
 
 def main():
-    st.title("Procesador de Imágenes con IA")
+    st.set_page_config(
+        page_title="AI Background Remover",
+        page_icon="🖼️",
+        layout="wide"
+    )
     
-    tab1, tab2 = st.tabs(["Procesar Imagen Individual", "Procesar Carpeta"])
+    st.title("🖼️ Procesador de Imágenes con IA")
+    st.write("Sube hasta 10 imágenes para remover el fondo y agregar un fondo de galaxia")
     
-    with tab1:
-        st.header("Subir Imagen Individual")
-        uploaded_file = st.file_uploader("Subir una imagen", type=["jpg", "jpeg", "png"])
-        if uploaded_file is not None:
-            remove_background(uploaded_file)
+    uploaded_files = st.file_uploader(
+        "Arrastra o selecciona tus imágenes (máximo 10)",
+        type=["jpg", "jpeg", "png"],
+        accept_multiple_files=True
+    )
     
-    with tab2:
-        st.header("Procesar Carpeta Completa")
-        input_folder = st.text_input("Ruta de la carpeta con imágenes:", "./images")
+    if uploaded_files:
+        if len(uploaded_files) > 10:
+            st.error("⚠️ Por favor, selecciona máximo 10 imágenes")
+            return
         
-        if st.button("Procesar Carpeta"):
-            if os.path.exists(input_folder):
-                process_folder(input_folder)
-            else:
-                st.error(f"La carpeta {input_folder} no existe")
+        with st.spinner("Procesando imágenes..."):
+            processed_paths = process_images(uploaded_files)
+        
+        if processed_paths:
+            st.success(f"✅ {len(processed_paths)} imágenes procesadas exitosamente!")
+            
+            # Mostrar imágenes procesadas
+            cols = st.columns(min(3, len(processed_paths)))
+            for idx, path in enumerate(processed_paths):
+                with cols[idx % 3]:
+                    st.image(path, caption=f"Imagen {idx + 1}")
+                    with open(path, "rb") as img_file:
+                        st.download_button(
+                            label=f"⬇️ Descargar imagen {idx + 1}",
+                            data=img_file,
+                            file_name=os.path.basename(path),
+                            mime="image/png"
+                        )
+            
+            # Botón para descargar todas las imágenes
+            if len(processed_paths) > 1:
+                zip_buffer = create_zip_of_images(processed_paths)
+                st.download_button(
+                    label="⬇️ Descargar todas las imágenes",
+                    data=zip_buffer.getvalue(),
+                    file_name="imagenes_procesadas.zip",
+                    mime="application/zip"
+                )
+    
+    # Información adicional
+    with st.expander("ℹ️ Información"):
+        st.markdown("""
+        ### Cómo usar:
+        1. Arrastra o selecciona hasta 10 imágenes
+        2. Espera a que se procesen
+        3. Descarga las imágenes individualmente o todas juntas
+        
+        ### Formatos soportados:
+        - JPG/JPEG
+        - PNG
+        
+        ### Limitaciones:
+        - Máximo 10 imágenes por vez
+        - Tamaño máximo por imagen: 5MB
+        """)
 
 if __name__ == "__main__":
     main()
