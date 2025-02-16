@@ -4,6 +4,11 @@ __pycache__/
 *$py.class
 venv/
 env/
+banners/
+images/
+processed_images/
+uploads/
+.streamlit/secrets.toml
 
 # Archivos procesados
 processed_images/
