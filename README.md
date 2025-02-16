@@ -28,7 +28,7 @@ An AI-powered web application that removes backgrounds from images and allows yo
 1. Clone the repository:
 ```bash
 git clone https://github.com/valentinolopezbruno/remove-background-py.git
-cd ai-background-processor
+cd remove-background-py
 ```
 
 2. Create and activate a virtual environment (recommended):
