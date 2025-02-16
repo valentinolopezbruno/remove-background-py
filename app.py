@@ -6,62 +6,50 @@ from pathlib import Path
 import zipfile
 import io
 
-def save_uploaded_file(uploaded_file):
-    upload_dir = "uploads"
-    if not os.path.exists(upload_dir):
-        os.makedirs(upload_dir)
-    file_path = os.path.join(upload_dir, uploaded_file.name)
+def save_uploaded_file(uploaded_file, directory):
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    file_path = os.path.join(directory, uploaded_file.name)
     with open(file_path, "wb") as f:
         f.write(uploaded_file.getbuffer())
     return file_path
 
-def overlay_images(foreground_path, background_path="./banners/banner-galaxia.jpeg"):
-    foreground = Image.open(foreground_path)
-    background = Image.open(background_path)
+def process_images(images, background_image=None, background_color=None):
+    results = []
     
-    background = background.resize(foreground.size)
+    # Si hay imagen de fondo, prepararla
+    if background_image:
+        bg_img = Image.open(background_image)
     
-    if foreground.mode != 'RGBA':
-        foreground = foreground.convert('RGBA')
-    if background.mode != 'RGBA':
-        background = background.convert('RGBA')
+    for img in images:
+        # Guardar imagen original
+        input_path = save_uploaded_file(img, "uploads/originals")
+        
+        # Procesar imagen
+        input_image = Image.open(input_path)
+        output_image = remove(input_image)
+        
+        if background_image:
+            # Redimensionar el fondo al tamaño de la imagen actual
+            resized_bg = bg_img.resize(output_image.size)
+            # Convertir ambas imágenes a RGBA
+            resized_bg = resized_bg.convert('RGBA')
+            output_image = output_image.convert('RGBA')
+            # Combinar imágenes
+            resized_bg.paste(output_image, (0, 0), output_image)
+            output_image = resized_bg
+        elif background_color:
+            # Usar color sólido como fondo
+            bg = Image.new("RGBA", output_image.size, background_color)
+            output_image = Image.alpha_composite(bg, output_image.convert('RGBA'))
+        
+        # Guardar resultado
+        output_path = f"uploads/processed/{img.name}"
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        output_image.save(output_path, "PNG")
+        results.append((input_path, output_path))
     
-    combined = Image.alpha_composite(background, foreground)
-    
-    output_path = foreground_path.replace('_rmbg.', '_combined.')
-    combined.save(output_path, "PNG")
-    return output_path
-
-def create_zip_of_images(image_paths, zip_name="processed_images.zip"):
-    zip_buffer = io.BytesIO()
-    with zipfile.ZipFile(zip_buffer, "w") as zip_file:
-        for path in image_paths:
-            zip_file.write(path, os.path.basename(path))
-    return zip_buffer
-
-def process_images(uploaded_files):
-    processed_paths = []
-    
-    for uploaded_file in uploaded_files:
-        try:
-            # Guardar y procesar imagen
-            input_image = save_uploaded_file(uploaded_file)
-            output_path = input_image.replace('.', '_rmbg.')
-            
-            # Remover fondo
-            img = Image.open(input_image)
-            output = remove(img)
-            output.save(output_path, "PNG")
-            
-            # Agregar fondo de galaxia
-            final_path = overlay_images(output_path)
-            processed_paths.append(final_path)
-            
-        except Exception as e:
-            st.error(f"Error procesando {uploaded_file.name}: {str(e)}")
-            continue
-    
-    return processed_paths
+    return results
 
 def main():
     st.set_page_config(
@@ -73,9 +61,28 @@ def main():
     st.title("🖼️ Procesador de Imágenes con IA")
     st.write("Sube hasta 10 imágenes para remover el fondo y agregar un fondo de galaxia")
     
+    # Contenedor para opciones de fondo
+    with st.expander("Opciones de fondo", expanded=True):
+        background_option = st.radio(
+            "Selecciona el tipo de fondo",
+            ["Transparente", "Color sólido", "Imagen personalizada"]
+        )
+        
+        background_color = None
+        background_image = None
+        
+        if background_option == "Color sólido":
+            background_color = st.color_picker("Selecciona el color de fondo", "#FFFFFF")
+        elif background_option == "Imagen personalizada":
+            background_image = st.file_uploader(
+                "Sube una imagen de fondo",
+                type=["png", "jpg", "jpeg"]
+            )
+    
+    # Subida múltiple de archivos
     uploaded_files = st.file_uploader(
-        "Arrastra o selecciona tus imágenes (máximo 10)",
-        type=["jpg", "jpeg", "png"],
+        "Sube tus imágenes (máximo 10)", 
+        type=["png", "jpg", "jpeg"],
         accept_multiple_files=True
     )
     
@@ -83,36 +90,39 @@ def main():
         if len(uploaded_files) > 10:
             st.error("⚠️ Por favor, selecciona máximo 10 imágenes")
             return
-        
-        with st.spinner("Procesando imágenes..."):
-            processed_paths = process_images(uploaded_files)
-        
-        if processed_paths:
-            st.success(f"✅ {len(processed_paths)} imágenes procesadas exitosamente!")
             
-            # Mostrar imágenes procesadas
-            cols = st.columns(min(3, len(processed_paths)))
-            for idx, path in enumerate(processed_paths):
-                with cols[idx % 3]:
-                    st.image(path, caption=f"Imagen {idx + 1}")
-                    with open(path, "rb") as img_file:
+        if st.button("Procesar Imágenes"):
+            with st.spinner("Procesando imágenes..."):
+                results = process_images(uploaded_files, background_image, background_color)
+                
+                # Mostrar resultados en una cuadrícula
+                cols_per_row = 2
+                for i in range(0, len(results), cols_per_row):
+                    cols = st.columns(cols_per_row)
+                    for j in range(cols_per_row):
+                        if i + j < len(results):
+                            with cols[j]:
+                                st.subheader(f"Imagen {i + j + 1}")
+                                original, processed = results[i + j]
+                                st.image(original, caption="Original", use_column_width=True)
+                                st.image(processed, caption="Procesada", use_column_width=True)
+                
+                # Crear un ZIP con los resultados
+                if len(results) > 0:
+                    zip_path = "uploads/processed_images.zip"
+                    with zipfile.ZipFile(zip_path, 'w') as zipf:
+                        for _, processed in results:
+                            zipf.write(processed)
+                    
+                    with open(zip_path, 'rb') as f:
                         st.download_button(
-                            label=f"⬇️ Descargar imagen {idx + 1}",
-                            data=img_file,
-                            file_name=os.path.basename(path),
-                            mime="image/png"
+                            "⬇️ Descargar todas las imágenes procesadas",
+                            f,
+                            file_name="imagenes_procesadas.zip",
+                            mime="application/zip",
+                            key="download_button"
                         )
-            
-            # Botón para descargar todas las imágenes
-            if len(processed_paths) > 1:
-                zip_buffer = create_zip_of_images(processed_paths)
-                st.download_button(
-                    label="⬇️ Descargar todas las imágenes",
-                    data=zip_buffer.getvalue(),
-                    file_name="imagenes_procesadas.zip",
-                    mime="application/zip"
-                )
-    
+
     # Información adicional
     with st.expander("ℹ️ Información"):
         st.markdown("""
